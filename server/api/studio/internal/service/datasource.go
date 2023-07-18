@@ -294,6 +294,7 @@ func (d *datasourceService) save(typ, name, platform, config, secret string) (id
 	}
 	return int(dbs.ID), nil
 }
+
 func (d *datasourceService) update(id int, typ, platform, name, config, secret string) (err error) {
 	user := d.ctx.Value(auth.CtxKeyUserInfo{}).(*auth.AuthData)
 	host := user.Address + ":" + strconv.Itoa(user.Port)

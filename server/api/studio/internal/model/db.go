@@ -29,6 +29,7 @@ func InitDB(sqlitedbFilePath string) {
 		&SchemaSnapshot{},
 		&Favorite{},
 		&File{},
+		&GPTConfig{},
 	)
 	if err != nil {
 		zap.L().Fatal(fmt.Sprintf("init taskInfo table fail: %s", err))

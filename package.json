@@ -11,6 +11,7 @@
   "scripts": {
     "start": "vite",
     "dev": "vite",
+    "dev:go": "cd server/api/studio && make run",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "postinstall": "husky install"
@@ -55,6 +56,7 @@
     "uuid": "^8.3.1"
   },
   "devDependencies": {
+    "cheerio": "^1.0.0-rc.12",
     "@types/bezier-js": "^4.1.0",
     "@types/d3-color": "^3.0.2",
     "@types/dagre": "^0.7.46",
@@ -104,5 +106,6 @@
   },
   "ci": {
     "version": "8"
-  }
+  },
+  "type": "module"
 }

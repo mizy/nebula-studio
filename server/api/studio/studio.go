@@ -51,7 +51,6 @@ func main() {
 		zap.L().Fatal("init config failed", zap.Error(err))
 	}
 	server.InitDB(c.File.SqliteDbFilePath)
-
 	svcCtx := svc.NewServiceContext(c)
 	server := rest.MustNewServer(c.RestConf, rest.WithNotFoundHandler(studioMiddleware.AssetsMiddlewareWithCtx(svcCtx, embedAssets)))
 

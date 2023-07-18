@@ -145,6 +145,7 @@ func (i *importService) updateDatasourceConfig(conf *types.CreateImportTaskReque
 	}
 	return &config, nil
 }
+
 func updateConfig(conf config.Configurator, taskDir, uploadDir string) {
 	confv3 := conf.(*configv3.Config)
 	if confv3.Log == nil {
@@ -170,7 +171,6 @@ func (i *importService) CreateImportTask(req *types.CreateImportTaskRequest) (*t
 		return nil, ecode.WithErrorMessage(ecode.ErrParam, err)
 	}
 	conf, err := config.FromBytes(jsons)
-
 	if err != nil {
 		return nil, ecode.WithErrorMessage(ecode.ErrInternalServer, err)
 	}
