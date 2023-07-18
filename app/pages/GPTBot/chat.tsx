@@ -86,7 +86,6 @@ function Chat() {
         content: systemPrompt,
       },
     ];
-    console.log(sendMessages);
     ws.runChat({
       req: {
         stream: true,
@@ -185,7 +184,7 @@ function Chat() {
       if (index % 2 === 0) {
         return <p key={index}>{item}</p>;
       } else {
-        item = item.replace(/^([\n\r]|ngql|gql)/g, "");
+        item = item.replace(/^(\n|ngql|gql)/g, "");
         if (pending) {
           return <code>{item}</code>;
         }
@@ -199,7 +198,7 @@ function Chat() {
               Run
             </span>
             <CodeMirror
-              height={item.split("\n").length * 30 + ""}
+              height={item.split("\n").length * 20 + ""}
               value={item}
               options={{
                 type: "nebula",
