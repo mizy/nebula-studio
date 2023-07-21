@@ -1,86 +1,55 @@
 import { Button, Input } from "antd";
 import styles from "./chat.module.less";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import ws from "@app/utils/websocket";
 import { debounce } from "lodash";
-import ngqlDoc from "./ngql.json";
 import rootStore from "@app/stores";
 import CodeMirror from "@app/components/CodeMirror";
-
-const ngqlMap = ngqlDoc.reduce((acc, item) => {
-  item.url = item.url.replace(
-    "https://docs.nebula-graph.io/3.5.0/3.ngql-guide/",
-    ""
-  );
-  acc[item.url] = item;
-  return acc;
-});
-const categoryDict =
-  "[" +
-  ngqlDoc
-    .map(
-      (item) =>
-        `"${item.url.replace(
-          "https://docs.nebula-graph.io/3.5.0/3.ngql-guide/",
-          ""
-        )}"`
-    )
-    .join(",") +
-  "]";
-const matchPrompt = `Generate NebulaGraph query from natural language.
-Use only the provided relationship types and properties in the schema.
-Do not use any other relationship types or properties that are not provided.
-Schema:
----
-{schema}
----
-Note: NebulaGraph speaks a dialect of Cypher, comparing to standard Cypher:
-1. it uses double equals sign for comparison: == rather than =
-2. it needs explicit label specification when referring to node properties, i.e.
-v is a variable of a node, and we know its label is Foo, v.foo.name is correct
-while v.name is not.
-For example, see this diff between standard and NebulaGraph Cypher dialect:
-diff
-< MATCH (p:person)-[:directed]->(m:movie) WHERE m.name = 'The Godfather'
-< RETURN p.name;
----
-> MATCH (p:person)-[:directed]->(m:movie) WHERE m.movie.name == 'The Godfather'
-> RETURN p.person.name;
-NebulaGraph Cypher dialect query:`;
+import { observer } from "mobx-react-lite";
 
 function Chat() {
   const [text, setText] = useState("");
   const [pending, setPending] = useState(false);
+  const contentRef = useRef<HTMLDivElement>();
   const [messages, setMessages] = useState([]); // [{role: 'user', content: 'hello'}, {role: 'system', content: 'hello'}
   const onSend = debounce(async () => {
+    if (text === "") return;
     setPending(true);
     // just use last 5 message
-    const beforeMessages = [
-      ...messages.slice(messages.length - 5, messages.length),
-    ];
+    const beforeMessages =
+      rootStore.gpt.mode === "text2cypher"
+        ? []
+        : [...messages.slice(messages.length - 5, messages.length)];
     const newMessages = [
       ...messages,
       { role: "user", content: text },
-      { role: "assistant", content: "" },
+      { role: "assistant", content: "", status: "pending" },
     ];
     setText("");
     setMessages(newMessages);
-    const systemPrompt = await GetDocPrompt(text);
+    const systemPrompt = await rootStore.gpt.getDocPrompt(text);
     const sendMessages = [
       {
         role: "system",
         content:
-          "You are a helpful NebulaGraph database assistant to help user write the ngql. you need use markdown to reply short and clear.",
+          "You are a helpful NebulaGraph database NGQL assistant to help user write the ngql",
       },
       // slice 100 char
       ...beforeMessages.map((item) => ({
-        ...item,
+        role: item.role,
         content: item.content.trim().slice(-100),
       })),
-      // {
-      //   role: 'user',
-      //   content: /[\u4e00-\u9fa5]/.test(text) ? "请使用中文":"Please use English"
-      // },
+      {
+        role: "user",
+        content: /[\u4e00-\u9fa5]/.test(text)
+          ? "请使用中文"
+          : "Please use English",
+      },
+      {
+        role: "user",
+        content:
+          "you need use markdown to reply short and clear and need think more and more and add ``` as markdown code block to write the ngql.",
+      },
       {
         role: "user",
         content: systemPrompt,
@@ -89,12 +58,13 @@ function Chat() {
     ws.runChat({
       req: {
         stream: true,
-        temperature: 0.7,
+        temperature: 0.5,
         max_tokens: 200,
         messages: sendMessages,
       },
       callback: (res) => {
         if (res.message.done) {
+          newMessages[newMessages.length - 1].status = "done";
           setPending(false);
           return;
         }
@@ -109,87 +79,31 @@ function Chat() {
     });
   }, 200);
 
-  async function GetDocPrompt(text) {
-    let prompt = matchPrompt;
-    const { schema } = rootStore;
-    const res = (await ws.runChat({
-      req: {
-        temperature: 0.5,
-        stream: false,
-        max_tokens: 30,
-        messages: [
-          {
-            role: "system",
-            content: `graph database doc titles array is below:${categoryDict}.give me a most relevant doc path for the question: ${text}, do not write explanation for the path, just give me the path without any prefix words.`,
-          },
-        ],
-      },
-    })) as any;
-    if (res.code === 0) {
-      const url = res.message.choices[0].message?.content;
-      console.log("relation url:", url);
-      if (ngqlMap[url]) {
-        const doc = ngqlMap[url]?.content;
-        if (doc) {
-          prompt = `learn the below nGQL, and use it to help user write the ngql,the user space schema is "{schema}", the user space vid type is "${
-            schema.spaceVidType
-          }" the doc is: \n"${doc
-            .replaceAll("  ", "")
-            .replaceAll("\n", "")
-            .slice(
-              0,
-              1000
-            )}"\n the question is "{query_str}",you need think more and more.and add \`\`\` as markdown code block to write the gql.`;
-        }
-      }
+  useEffect(() => {
+    if (contentRef.current) {
+      contentRef.current.scrollTop = contentRef.current.scrollHeight;
     }
-    prompt = prompt.replace("{query_str}", text);
-    const pathname = window.location.pathname;
-    const space =
-      pathname.indexOf("schema") > -1
-        ? rootStore.schema.currentSpace
-        : rootStore.console.currentSpace;
-    if (!space) {
-      return prompt.replace("{schema}", "tags:\n" + "edges:\n");
+  }, [messages]);
+
+  function renderContent(message: {
+    role: string;
+    content: string;
+    status?: string;
+  }) {
+    if (!message.content && message.status === "pending") {
+      return <div className={styles.loading}>loading...</div>;
     }
-    await schema.switchSpace(space);
-    await schema.getTagList();
-    await schema.getEdgeList();
-    const { tagList, edgeList } = rootStore.schema;
-    const tagsSchema = tagList
-      .map((item) => {
-        return `${item.name}[${item.fields
-          .map((p) => p.Field + `(${p.Type})`)
-          .join(",")}]`;
-      })
-      .join("\n");
-    const edgeTypesSchema = edgeList
-      .map((item) => {
-        return `${item.name}[${item.fields
-          .map((p) => p.Field + `(${p.Type})`)
-          .join(",")}]`;
-      })
-      .join("\n");
-
-    prompt = prompt.replace(
-      "{schema}",
-      "tags:\n:" + tagsSchema + "\nedges:\n" + edgeTypesSchema
-    );
-    return prompt;
-  }
-
-  function renderContent(content) {
-    const gqls = content.split(/```([^`]+)```/);
+    const gqls = message.content.split(/```([^`]+)```/);
     return gqls.map((item, index) => {
       if (index % 2 === 0) {
         return <p key={index}>{item}</p>;
       } else {
-        item = item.replace(/^(\n|ngql|gql)/g, "");
-        if (pending) {
-          return <code>{item}</code>;
+        item = item.replace(/^(\n|ngql|gql|cypher)/g, "").replace(/\n$/g, "");
+        if (message.status !== "done") {
+          return <code key={index}>{item}</code>;
         }
         return (
-          <div className={styles.codeWrapper}>
+          <div key={index} className={styles.codeWrapper}>
             <span
               onClick={() => {
                 runNgqlInConsole(item);
@@ -198,10 +112,10 @@ function Chat() {
               Run
             </span>
             <CodeMirror
-              height={item.split("\n").length * 20 + ""}
+              height="120"
               value={item}
               options={{
-                type: "nebula",
+                mode: "nebula",
               }}
             />
           </div>
@@ -213,9 +127,10 @@ function Chat() {
   function runNgqlInConsole(item) {
     rootStore.console.runGQL({ gql: item });
   }
+
   return (
     <div className={styles.chat}>
-      <div className={styles.chatContent}>
+      <div className={styles.chatContent} ref={contentRef}>
         <div className={styles.chatContentInner}>
           {messages.map((item, index) => {
             return (
@@ -229,7 +144,7 @@ function Chat() {
               >
                 <div className={styles.chatMessageInner}>
                   <div className={styles.chatMessageContent}>
-                    {renderContent(item.content || "...")}
+                    {renderContent(item)}
                   </div>
                 </div>
               </div>
@@ -244,7 +159,7 @@ function Chat() {
             setText(e.target.value);
           }}
         />
-        <Button type="primary" size="small" onClick={onSend}>
+        <Button type="primary" size="small" loading={pending} onClick={onSend}>
           Send
         </Button>
       </div>
@@ -252,4 +167,4 @@ function Chat() {
   );
 }
 
-export default Chat;
+export default observer(Chat);

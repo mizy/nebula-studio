@@ -47,17 +47,17 @@ service studio-api {
 	@doc "Init Sketch"
 	@handler Init
 	post /api/sketches/sketch (InitSketchRequest) returns (SketchIDResult)
-	
+
 	@doc "Get Sketch List"
 	@handler GetList
 	get /api/sketches/list (GetSketchesRequest) returns (SketchList)
-	
+
 	@doc "Delete Sketch"
 	@handler Delete
 	delete /api/sketches/:id (DeleteSketchRequest)
-	
+
 	@doc "Update Sketch Item"
 	@handler Update
 	put /api/sketches/:id (UpdateSketchRequest)
-	
+
 }

@@ -111,23 +111,23 @@ service studio-api {
 	@doc "Update Datasource"
 	@handler DatasourceUpdate
 	post /api/datasources/:id(DatasourceUpdateRequest)
-	
+
 	@doc "Remove Datasource"
 	@handler DatasourceRemove
 	delete /api/datasources/:id(DatasourceRemoveRequest)
-	
+
 	@doc "Batch Remove Datasource"
 	@handler DatasourceBatchRemove
 	delete /api/datasources(DatasourceBatchRemoveRequest)
-	
+
 	@doc "List Datasource"
 	@handler DatasourceList
 	get /api/datasources(DatasourceListRequest) returns(DatasourceData)
-	
+
 	@doc "List Contents"
 	@handler DatasourceListContents
 	get /api/datasources/:id/contents(DatasourceListContentsRequest) returns(DatasourceListContentsData)
-	
+
 	@doc "Preview File"
 	@handler DatasourcePreviewFile
 	get /api/datasources/:id/file-preview(DatasourcePreviewFileRequest) returns(DatasourcePreviewFileData)

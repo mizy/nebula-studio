@@ -29,15 +29,15 @@ service studio-api {
 	@doc "Add Favorite"
 	@handler Add
 	post /api/favorites (CreateFavoriteRequest) returns (FavoriteIDResult)
-	
+
 	@doc "Get Favorite List"
 	@handler GetList
 	get /api/favorites/list returns (FavoriteList)
-	
+
 	@doc "Delete Favorite"
 	@handler Delete
 	delete /api/favorites/:id (DeleteFavoriteRequest)
-	
+
 	@doc "Clear Favorites"
 	@handler DeleteAll
 	delete /api/favorites

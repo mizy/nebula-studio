@@ -22,7 +22,7 @@ service studio-api {
 	@doc "Update Schema Snapshot"
 	@handler Update
 	put /api/schema/snapshot (UpdateSchemaSnapshotRequest)
-	
+
 	@doc "Get Schema Snapshot"
 	@handler GetSnapshot
 	get /api/schema/snapshot (GetSchemaSnapshotRequest) returns (SchemaSnapshot)

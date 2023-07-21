@@ -26,7 +26,7 @@ service studio-api {
 	@doc "GPTConfig"
 	@handler GPTConfig
 	post /api/config/gpt(GPTConfigRequest)
-	
+
 	@handler GetGPTConfig
 	get /api/config/gpt returns (GPTConfigRequest)
 }

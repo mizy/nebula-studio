@@ -73,28 +73,15 @@ async function getDocIndex(host = 'https://docs.nebula-graph.io') {
   // save nowDocMap
   console.log('saved')
   for (let key in res) {
-    fs.writeFileSync(path.join(__dirname, `./${key}.json`), JSON.stringify(res[key]));
+    fs.writeFileSync(path.join(__dirname, `../app/utils/${key}.json`), JSON.stringify(res[key]));
   }
 }
 
 async function makeDocTextForGPT(content) {
   let contentArr = content.split('\n').filter(item => item.trim().length > 1);
   contentArr = contentArr.filter(item => !/(^\+-+.*-+\+$)|(^\|.*\|$)/.test(item.replaceAll("\n", '')));
-  const contentFinal = contentArr.join('\n');
+  const contentFinal = contentArr.join('\n').replaceAll('nebula>', '');
   return contentFinal;
-  // let prompt = `请精简以下图数据库语句的文档，保障文档长度小于800个gpt token，并且保留语句的示例用法,保持为英文。文档:\n${contentFinal}`;
-  // return axios.post('https://vesoft.openai.azure.com/openai/deployments/ding_chatbot/completions?api-version=2023-03-15-preview', {
-  //   prompt,
-  //   max_tokens: 500,
-  //   temperature: 0.7,
-  // }, {
-  //   headers: {
-  //     'Content-Type': 'application/json',
-  //     'api-key': '4d93ecc9305a4b0487cee880258aea19',
-  //   }
-  // }).then(res => {
-  //   return res.data.choices[0].text;
-  // })
 }
 
 export default getDocIndex; 
