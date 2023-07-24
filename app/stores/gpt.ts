@@ -190,19 +190,22 @@ class GPT {
       const firstToken = tokens.find(
         (item) => item.replaceAll(" ", "").length > 0
       );
-      const hits = ngqlDoc.filter(
-        (item) =>
-          item.title.toLowerCase().indexOf(firstToken.toLowerCase()) > -1
-      );
+      const hits = [];
+      for (const key in tck.cateogryMap) {
+        if (key.toLowerCase().indexOf(firstToken.toLowerCase()) > -1) {
+          hits.push(...tck.cateogryMap[key]);
+        }
+      }
       let doc = "";
-      if (hits.length) {
-        hits.forEach((item) => {
-          if (this.mode == "text2cypher" && item.title == "match") {
-            doc += matchPrompt;
-            return;
-          }
-          doc += item.title + "\n" + item.content + "\n";
-        });
+      if (this.mode == "text2cypher" && firstToken.toLowerCase() == "match") {
+        doc += matchPrompt;
+      } else {
+        if (hits.length) {
+          hits.find((item) => {
+            if (doc.length > this.config.docLength) return true;
+            doc += item + "\n";
+          });
+        }
       }
       if (!doc) {
         return;
@@ -218,10 +221,7 @@ class GPT {
           messages: [
             {
               role: "user",
-              content: `As a NebulaGraph NGQL code autocomplete copilot, you have access to the following information: document "${doc.slice(
-                0,
-                this.config.docLength
-              )}" and user space schema "${schema}".
+              content: `As a NebulaGraph NGQL code autocomplete copilot, you have access to the following information: document "${doc}" and user space schema "${schema}".
                Use this information to guess the user's next NGQL code autocomplete as accurately as possible.
                Please provide your guess as a response without any prefix words.
                Don't explain anything.
