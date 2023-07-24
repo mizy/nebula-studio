@@ -4,6 +4,7 @@ import ngqlJson from "../utils/ngql.json";
 import { get } from "@app/utils/http";
 import rootStore from ".";
 import ws from "@app/utils/websocket";
+import tck from "../utils/tck";
 
 const urlTransformerMap = {
   "7.general-query-statements/3.go/":
@@ -51,7 +52,6 @@ export const ngqlMap = ngqlDoc.reduce((acc, item) => {
   acc[item.url] = item;
   return acc;
 });
-const categoryDict = "[" + ngqlDoc.map((item) => item.url).join(",") + "]";
 export interface GPTConfig {
   url: string;
   apiType: string;
@@ -121,7 +121,7 @@ class GPT {
   }
 
   async getDocPrompt(text: string) {
-    let prompt = matchPrompt;
+    let prompt = matchPrompt; // default use text2cypher
     if (
       text.toLowerCase().indexOf("match") === -1 &&
       this.mode !== "text2cypher"
@@ -130,11 +130,11 @@ class GPT {
         req: {
           temperature: 0,
           stream: false,
-          max_tokens: 30,
+          max_tokens: 10,
           messages: [
             {
               role: "system",
-              content: `graph database doc titles array is below:${categoryDict}.give me a most relevant doc path for the question: ${text},  just give me the path without any prefix words.the path is:`,
+              content: `the graph database doc with "," splited is below:${tck.categoryString}. give me a top 2 relevant value for the question: "${text}".just give me the value without any prefix words.the value is:`,
             },
           ],
         },
@@ -142,14 +142,21 @@ class GPT {
       if (res.code === 0) {
         const url = res.message.choices[0].message?.content;
         console.log("select doc url:", url);
-        const pathName = url.split("#")[0];
-        if (ngqlMap[pathName]) {
-          const doc = ngqlMap[pathName]?.content;
-          if (doc) {
-            prompt = `learn the below NGQL, and use it to help user write the ngql,the user space schema is "{schema}" the doc is: \n"${doc.slice(
-              0,
-              this.config.docLength
-            )}"\n the question is "{query_str}"`;
+        const paths = url.replace(" ", "").split(",");
+        if (tck.cateogryMap[paths[0]]) {
+          let doc = tck.cateogryMap[paths[0]];
+          const doc2 = tck.cateogryMap[paths[1]];
+          if (doc2) {
+            doc = doc.concat(doc2);
+          }
+          if (doc.length) {
+            let docString = "";
+            doc.find((item) => {
+              if (docString.length > this.config.docLength) return true;
+              docString += item + "\n";
+            });
+            console.log("docString:", docString);
+            prompt = `learn the below NGQL, and use it to help user write the ngql,the user space schema is "{schema}" the doc is: \n${docString} the question is "{query_str}"`;
           }
         }
       }

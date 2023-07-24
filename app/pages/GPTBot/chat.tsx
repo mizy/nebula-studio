@@ -48,7 +48,7 @@ function Chat() {
       {
         role: "user",
         content:
-          "you need use markdown to reply short and clear and need think more and more and add ``` as markdown code block to write the ngql.",
+          "you need use markdown to reply short and clear.don't explain and add ``` as markdown code block to write the ngql.",
       },
       {
         role: "user",
