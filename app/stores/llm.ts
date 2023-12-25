@@ -31,12 +31,12 @@ diff
 Question:{query_str}
 `;
 
-export const docFinderPrompt = `The task is to identify the top2 effectively categories from 
+export const docFinderPrompt = `Your task is to determine the top 2 relevant categories from the provided list:
 \`\`\`categories
 {category_string}
 \`\`\`
-that answer the question "{query_str}" with the user's history ask is:"{history_str}" for NebulaGraph database.
-The output should be a comma-separated list like "category1,category2" and don't explain anything`;
+These categories should best answer the question "{query_str}" in the context of the user's historical queries, represented by "{history_str}", within the NebulaGraph database.
+Please return your answer as a comma-separated list, such as "category1,category2", without including any additional text, don't explain`;
 
 export const text2queryPrompt = `Assuming you are an  NebulaGraph database AI assistant, your role is to assist users in crafting NGQL queries with NebulaGraph. You have access to the following details:
 the user space schema is:

@@ -117,7 +117,7 @@ export class SchemaStore {
   };
 
   getSpaces = async () => {
-    const { code, data } = await service.execNGQL({ gql: 'show spaces;' });
+    const { code, data } = await service.execNGQL({ gql: 'show graphs;' });
     if (code === 0) {
       const spaces = data.tables.map((item) => item.Name);
       this.update({

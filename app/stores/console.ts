@@ -45,7 +45,7 @@ export interface SchemaItemOverview {
   children: IProperty[];
 }
 
-const DEFAULT_GQL = 'SHOW SPACES;';
+const DEFAULT_GQL = '';
 export class ConsoleStore {
   runGQLLoading = false;
   currentGQL = DEFAULT_GQL;

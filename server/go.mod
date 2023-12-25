@@ -3,13 +3,16 @@ module github.com/vesoft-inc/nebula-studio/server
 go 1.18
 
 require (
-	github.com/facebook/fbthrift v0.31.1-0.20211129061412-801ed7f9f295
+	github.com/facebook/fbthrift v0.31.1-0.20221225090033-b7c4ecdd9179
 	github.com/gorilla/websocket v1.5.0
 	github.com/satori/go.uuid v1.2.1-0.20181028125025-b2ce2384e17b
 	github.com/vesoft-inc/go-pkg v0.0.0-20230307111816-a43d6a342d23
 	github.com/vesoft-inc/nebula-importer/v4 v4.0.0
 	github.com/zeromicro/go-zero v1.3.3
+
 )
+
+replace github.com/vesoft-inc/nebula-ng-tools/golang => ../nebula-ng-tools/golang
 
 require (
 	github.com/agiledragon/gomonkey/v2 v2.9.0
@@ -83,6 +86,7 @@ require (
 	github.com/prometheus/procfs v0.7.3 // indirect
 	github.com/saintfish/chardet v0.0.0-20120816061221-3af4cd4741ca
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
+	github.com/vesoft-inc/nebula-ng-tools/golang v0.0.0-20231219025701-2ed5b939d459
 	go.opentelemetry.io/otel v1.3.0 // indirect
 	go.opentelemetry.io/otel/exporters/jaeger v1.3.0 // indirect
 	go.opentelemetry.io/otel/exporters/zipkin v1.3.0 // indirect

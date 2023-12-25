@@ -308,7 +308,7 @@ function Welcome(props: IProps) {
 
   const downloadDemo = useCallback(
     debounce(async (space: DatasetItem) => {
-      const showSpaceRes = await service.execNGQL({ gql: 'show spaces;' });
+      const showSpaceRes = await service.execNGQL({ gql: 'show graphs;' });
       if (showSpaceRes?.code !== 0) {
         return;
       }

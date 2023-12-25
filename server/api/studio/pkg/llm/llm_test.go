@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	db "github.com/vesoft-inc/nebula-studio/server/api/studio/internal/model"
+	"github.com/vesoft-inc/nebula-studio/server/api/studio/pkg/base"
 )
 
 func TestImportJob_ReadPDFFile(t *testing.T) {
@@ -14,7 +15,13 @@ func TestImportJob_ReadPDFFile(t *testing.T) {
 		LLMJob: &db.LLMJob{
 			File: "data/llm/test.pdf",
 		},
-		Process: &db.Process{},
+		Process: &base.Process{
+			TotalSize:        0,
+			CurrentSize:      0,
+			Ratio:            0,
+			PromptTokens:     0,
+			CompletionTokens: 0,
+		},
 	}
 
 	// Call the ReadPDFFile method

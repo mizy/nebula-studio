@@ -1,5 +1,7 @@
 package base
 
+import "time"
+
 type StatusCode int
 
 type Result interface{}
@@ -34,3 +36,8 @@ const (
 	LLMJobTypeFile     LLMJobType = "file"
 	LLMJobTypeFilePath LLMJobType = "file_path"
 )
+
+// set the timeout for the graph service: 8 hours
+// once the timeout is reached, the connection will be closed
+// all requests running ngql will be failed, so keepping a long timeout is necessary, make the connection alive
+const GraphServiceTimeout = 8 * time.Hour

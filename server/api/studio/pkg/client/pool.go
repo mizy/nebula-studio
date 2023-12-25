@@ -7,8 +7,7 @@ import (
 	"time"
 
 	"github.com/facebook/fbthrift/thrift/lib/go/thrift"
-	nebula "github.com/vesoft-inc/nebula-go/v3"
-	nebulaType "github.com/vesoft-inc/nebula-go/v3/nebula"
+	nebula "github.com/vesoft-inc/nebula-ng-tools/golang"
 	"github.com/zeromicro/go-zero/core/logx"
 )
 
@@ -68,8 +67,8 @@ func transformError(err error) error {
 
 func getValue(valWarp *nebula.ValueWrapper) (Any, error) {
 	switch valWarp.GetType() {
-	case "vertex", "edge", "path", "list", "map", "set":
-		return valWarp.String(), nil
+	// case "vertex", "edge", "path", "list", "map", "set":
+	// 	return valWarp.String(), nil
 	default:
 		return getBasicValue(valWarp)
 	}
@@ -77,49 +76,30 @@ func getValue(valWarp *nebula.ValueWrapper) (Any, error) {
 
 func getBasicValue(valWarp *nebula.ValueWrapper) (Any, error) {
 	valType := valWarp.GetType()
-	if valType == "null" {
-		value, err := valWarp.AsNull()
-		switch value {
-		case nebulaType.NullType___NULL__:
-			return "NULL", err
-		case nebulaType.NullType_NaN:
-			return "NaN", err
-		case nebulaType.NullType_BAD_DATA:
-			return "BAD_DATA", err
-		case nebulaType.NullType_BAD_TYPE:
-			return "BAD_TYPE", err
-		case nebulaType.NullType_OUT_OF_RANGE:
-			return "OUT_OF_RANGE", err
-		case nebulaType.NullType_DIV_BY_ZERO:
-			return "DIV_BY_ZERO", err
-		case nebulaType.NullType_UNKNOWN_PROP:
-			return "UNKNOWN_PROP", err
-		case nebulaType.NullType_ERR_OVERFLOW:
-			return "ERR_OVERFLOW", err
-		}
-		return "NULL", err
-	} else if valType == "bool" {
+	if valType == "bool" {
 		return valWarp.AsBool()
-	} else if valType == "int" {
-		return valWarp.AsInt()
-	} else if valType == "float" {
+	} else if valType == "int8" || valType == "int16" || valType == "int32" || valType == "int64" || strings.Contains(valType, "int") {
+		return valWarp.AsInt64()
+	} else if valType == "float" || valType == "double" {
 		return valWarp.AsFloat()
 	} else if valType == "string" {
 		return valWarp.AsString()
 	} else if valType == "date" {
-		return valWarp.String(), nil
-	} else if valType == "time" {
-		return valWarp.String(), nil
-	} else if valType == "datetime" {
-		return valWarp.String(), nil
-	} else if valType == "geography" {
-		return valWarp.String(), nil
+		return valWarp.AsDate()
+	} else if valType == "localTime" {
+		return valWarp.AsLocalTime()
+	} else if valType == "localDatetime" {
+		return valWarp.AsLocalDatetime()
 	} else if valType == "duration" {
+		return valWarp.AsDuration()
+	} else if valType == "path" {
+		return valWarp.AsPath()
+	} else if valType == "geography" {
 		return valWarp.String(), nil
 	} else if valType == "empty" {
 		return "_EMPTY_", nil
 	}
-	return "", nil
+	return valWarp.String(), nil
 }
 
 func getID(idWarp nebula.ValueWrapper) Any {
@@ -128,7 +108,7 @@ func getID(idWarp nebula.ValueWrapper) Any {
 	if idType == "string" {
 		vid, _ = idWarp.AsString()
 	} else if idType == "int" {
-		vid, _ = idWarp.AsInt()
+		vid, _ = idWarp.AsInt64()
 	}
 	return vid
 }
@@ -138,142 +118,132 @@ func getVertexInfo(valWarp *nebula.ValueWrapper, data map[string]Any) (map[strin
 	if err != nil {
 		return nil, err
 	}
-	id := node.GetID()
-	data["vid"] = getID(id)
-	tags := make([]string, 0)
-	properties := make(map[string]map[string]Any)
-	for _, tagName := range node.GetTags() {
-		tags = append(tags, tagName)
-		props, err := node.Properties(tagName)
+	data["vid"] = node.GetID()
+	properties := make(map[string]Any)
+
+	for key, value := range node.GetProperties() {
+		val, err := getBasicValue(value)
 		if err != nil {
 			return nil, err
 		}
-		_props := make(map[string]Any)
-		for k, v := range props {
-			value, err := getValue(v)
-			if err != nil {
-				return nil, err
-			}
-			_props[k] = value
-		}
-		properties[tagName] = _props
+		properties[key] = val
 	}
-	data["tags"] = tags
+	data["type"] = node.GetRawNode().GetNodeTypeID()
 	data["properties"] = properties
 	return data, nil
 }
 
 func getEdgeInfo(valWarp *nebula.ValueWrapper, data map[string]Any) (map[string]Any, error) {
-	relationship, err := valWarp.AsRelationship()
-	if err != nil {
-		return nil, err
-	}
-	srcID := relationship.GetSrcVertexID()
-	data["srcID"] = getID(srcID)
-	dstID := relationship.GetDstVertexID()
-	data["dstID"] = getID(dstID)
-	edgeName := relationship.GetEdgeName()
-	data["edgeName"] = edgeName
-	rank := relationship.GetRanking()
-	data["rank"] = rank
-	properties := make(map[string]Any)
-	props := relationship.Properties()
-	for k, v := range props {
-		value, err := getValue(v)
-		if err != nil {
-			return nil, err
-		}
-		properties[k] = value
-	}
-	data["properties"] = properties
+	// relationship, err := valWarp.AsEdge()
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// srcID := relationship.GetSrcVertexID()
+	// data["srcID"] = getID(srcID)
+	// dstID := relationship.GetDstVertexID()
+	// data["dstID"] = getID(dstID)
+	// edgeName := relationship.GetEdgeName()
+	// data["edgeName"] = edgeName
+	// rank := relationship.GetRanking()
+	// data["rank"] = rank
+	// properties := make(map[string]Any)
+	// props := relationship.Properties()
+	// for k, v := range props {
+	// 	value, err := getValue(v)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// 	properties[k] = value
+	// }
+	// data["properties"] = properties
 	return data, nil
 }
 
 func getPathInfo(valWarp *nebula.ValueWrapper, data map[string]Any) (map[string]Any, error) {
-	path, err := valWarp.AsPath()
-	if err != nil {
-		return nil, err
-	}
-	relationships := path.GetRelationships()
-	var _relationships []Any
-	for _, relation := range relationships {
-		_relation := make(map[string]Any)
-		srcID := relation.GetSrcVertexID()
-		_relation["srcID"] = getID(srcID)
-		dstID := relation.GetDstVertexID()
-		_relation["dstID"] = getID(dstID)
-		edgeName := relation.GetEdgeName()
-		_relation["edgeName"] = edgeName
-		rank := relation.GetRanking()
-		_relation["rank"] = rank
-		_relationships = append(_relationships, _relation)
-	}
-	data["relationships"] = _relationships
-	if len(relationships) == 0 {
-		nodes := path.GetNodes()
-		if len(nodes) > 0 {
-			startNode := nodes[0]
-			data["srcID"] = getID(startNode.GetID())
-		}
-	}
+	// path, err := valWarp.AsPath()
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// relationships := path.GetRelationships()
+	// var _relationships []Any
+	// for _, relation := range relationships {
+	// 	_relation := make(map[string]Any)
+	// 	srcID := relation.GetSrcVertexID()
+	// 	_relation["srcID"] = getID(srcID)
+	// 	dstID := relation.GetDstVertexID()
+	// 	_relation["dstID"] = getID(dstID)
+	// 	edgeName := relation.GetEdgeName()
+	// 	_relation["edgeName"] = edgeName
+	// 	rank := relation.GetRanking()
+	// 	_relation["rank"] = rank
+	// 	_relationships = append(_relationships, _relation)
+	// }
+	// data["relationships"] = _relationships
+	// if len(relationships) == 0 {
+	// 	nodes := path.GetNodes()
+	// 	if len(nodes) > 0 {
+	// 		startNode := nodes[0]
+	// 		data["srcID"] = getID(startNode.GetID())
+	// 	}
+	// }
 	return data, nil
 }
 
 func getListInfo(valWarp *nebula.ValueWrapper, listType string, _verticesParsedList *list, _edgesParsedList *list, _pathsParsedList *list) error {
-	var valueList []nebula.ValueWrapper
-	var err error
-	if listType == "list" {
-		valueList, err = valWarp.AsList()
-	} else if listType == "set" {
-		valueList, err = valWarp.AsDedupList()
-	}
-	if err != nil {
-		return err
-	}
-	for _, v := range valueList {
-		props := make(map[string]Any)
-		vType := v.GetType()
-		props["type"] = vType
-		if vType == "vertex" {
-			props, err = getVertexInfo(&v, props)
-			if err == nil {
-				*_verticesParsedList = append(*_verticesParsedList, props)
-			} else {
-				return err
-			}
-		} else if vType == "edge" {
-			props, err = getEdgeInfo(&v, props)
-			if err == nil {
-				*_edgesParsedList = append(*_edgesParsedList, props)
-			} else {
-				return err
-			}
-		} else if vType == "path" {
-			props, err = getPathInfo(&v, props)
-			if err == nil {
-				*_pathsParsedList = append(*_pathsParsedList, props)
-			} else {
-				return err
-			}
-		} else if vType == "list" {
-			err = getListInfo(&v, "list", _verticesParsedList, _edgesParsedList, _pathsParsedList)
-			if err != nil {
-				return err
-			}
-		} else if vType == "map" {
-			err = getMapInfo(&v, _verticesParsedList, _edgesParsedList, _pathsParsedList)
-			if err != nil {
-				return err
-			}
-		} else if vType == "set" {
-			err = getListInfo(&v, "set", _verticesParsedList, _edgesParsedList, _pathsParsedList)
-			if err != nil {
-				return err
-			}
-		} else {
-			// no need to parse basic value now
-		}
-	}
+	// var valueList []nebula.ValueWrapper
+	// var err error
+	// if listType == "list" {
+	// 	valueList, err = valWarp.AsList()
+	// } else if listType == "set" {
+	// 	valueList, err = valWarp.AsDedupList()
+	// }
+	// if err != nil {
+	// 	return err
+	// }
+	// for _, v := range valueList {
+	// 	props := make(map[string]Any)
+	// 	vType := v.GetType()
+	// 	props["type"] = vType
+	// 	if vType == "vertex" {
+	// 		props, err = getVertexInfo(&v, props)
+	// 		if err == nil {
+	// 			*_verticesParsedList = append(*_verticesParsedList, props)
+	// 		} else {
+	// 			return err
+	// 		}
+	// 	} else if vType == "edge" {
+	// 		props, err = getEdgeInfo(&v, props)
+	// 		if err == nil {
+	// 			*_edgesParsedList = append(*_edgesParsedList, props)
+	// 		} else {
+	// 			return err
+	// 		}
+	// 	} else if vType == "path" {
+	// 		props, err = getPathInfo(&v, props)
+	// 		if err == nil {
+	// 			*_pathsParsedList = append(*_pathsParsedList, props)
+	// 		} else {
+	// 			return err
+	// 		}
+	// 	} else if vType == "list" {
+	// 		err = getListInfo(&v, "list", _verticesParsedList, _edgesParsedList, _pathsParsedList)
+	// 		if err != nil {
+	// 			return err
+	// 		}
+	// 	} else if vType == "map" {
+	// 		err = getMapInfo(&v, _verticesParsedList, _edgesParsedList, _pathsParsedList)
+	// 		if err != nil {
+	// 			return err
+	// 		}
+	// 	} else if vType == "set" {
+	// 		err = getListInfo(&v, "set", _verticesParsedList, _edgesParsedList, _pathsParsedList)
+	// 		if err != nil {
+	// 			return err
+	// 		}
+	// 	} else {
+	// 		// no need to parse basic value now
+	// 	}
+	// }
 	return nil
 }
 
@@ -337,7 +307,7 @@ func (client *Client) handleRequest(nsid string) {
 			go func() {
 				defer func() {
 					if err := recover(); err != nil {
-						logx.Errorf("[handle request]: &s, %+v", request.Gqls, err)
+						logx.Errorf("[handle request]: %s, %+v", request.Gqls, err)
 						request.ResponseChannel <- ChannelResponse{
 							Results: nil,
 							Msg:     err,
@@ -368,7 +338,6 @@ func (client *Client) handleRequest(nsid string) {
 			}()
 		case <-client.CloseChannel:
 			client.sessionPool.clearSessions()
-			client.graphClient.Close()
 			clientPool.Delete(nsid)
 			return // Exit loop
 		}
@@ -378,19 +347,12 @@ func (client *Client) handleRequest(nsid string) {
 func (client *Client) executeRequest(session *nebula.Session, request ChannelRequest) {
 	parameterMap := client.parameterMap
 	result := make([]SingleResponse, 0)
+	spaceGQL := ""
 	// add use space before execute
 	if request.Space != "" {
 		space := strings.Replace(request.Space, "\\", "\\\\", -1)
 		space = strings.Replace(space, "`", "\\`", -1)
-		gql := fmt.Sprintf("USE `%s`;", space)
-		_, err := session.ExecuteWithParameter(gql, parameterMap)
-		if err != nil {
-			request.ResponseChannel <- ChannelResponse{
-				Results: nil,
-				Error:   transformError(err),
-			}
-			return
-		}
+		spaceGQL = fmt.Sprintf("USE `%s` ", space)
 	}
 
 	for _, gql := range request.Gqls {
@@ -413,7 +375,7 @@ func (client *Client) executeRequest(session *nebula.Session, request ChannelReq
 				})
 			}
 		} else {
-			execResponse, err := session.ExecuteWithParameter(gql, parameterMap)
+			execResponse, err := session.Execute(fmt.Sprintf("%s %s", spaceGQL, gql))
 			if err != nil {
 				result = append(result, SingleResponse{
 					Gql:    gql,
@@ -485,40 +447,24 @@ func parseExecuteData(response SingleResponse) (ParsedResult, error) {
 	}
 
 	if !res.IsSucceed() {
-		return result, errors.New(res.GetErrorMsg())
+		return result, errors.New(res.GetStatus())
 	}
 	if res.IsSetPlanDesc() {
 		resp := response.Result
 		if response.Result == nil {
 			return result, nil
 		}
-		format := string(resp.GetPlanDesc().GetFormat())
-		if format == "row" {
-			result.Headers = []string{"id", "name", "dependencies", "profiling data", "operator info"}
-			rows := res.MakePlanByRow()
-			for i := 0; i < len(rows); i++ {
-				rowValue := make(map[string]Any)
-				rowValue["id"] = rows[i][0]
-				rowValue["name"] = rows[i][1]
-				rowValue["dependencies"] = rows[i][2]
-				rowValue["profiling data"] = rows[i][3]
-				rowValue["operator info"] = rows[i][4]
-				result.Tables = append(result.Tables, rowValue)
-			}
-			return result, nil
-		} else {
+		format := resp.GetPlanDesc()
+		result.Headers = []string{"key", "value"}
+		for key, value := range format {
 			rowValue := make(map[string]Any)
-			result.Headers = append(result.Headers, "format")
-			if format == "dot" {
-				rowValue["format"] = res.MakeDotGraph()
-			} else if format == "dot:struct" {
-				rowValue["format"] = res.MakeDotGraphByStruct()
-			}
+			rowValue["key"] = key
+			rowValue["value"] = value
 			result.Tables = append(result.Tables, rowValue)
-			return result, nil
 		}
+		return result, nil
 	}
-	if !res.IsEmpty() {
+	if res.IsSucceed() {
 		rows := res.GetRows()
 		rowSize := len(rows)
 		colSize := res.GetColSize()
@@ -546,7 +492,7 @@ func parseExecuteData(response SingleResponse) (ParsedResult, error) {
 				}
 				rowValue[result.Headers[j]] = value
 				valueType := rowData.GetType()
-				if valueType == "vertex" {
+				if valueType == "node" {
 					parseValue := make(map[string]Any)
 					parseValue, err = getVertexInfo(rowData, parseValue)
 					parseValue["type"] = "vertex"
@@ -585,6 +531,6 @@ func parseExecuteData(response SingleResponse) (ParsedResult, error) {
 		}
 	}
 	result.TimeCost = res.GetLatency()
-	result.Space = res.GetSpaceName()
+	// result.Space = res.GetSpaceName()
 	return result, nil
 }

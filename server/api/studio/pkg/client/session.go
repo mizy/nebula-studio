@@ -4,7 +4,9 @@ import (
 	"sync"
 	"time"
 
-	nebula "github.com/vesoft-inc/nebula-go/v3"
+	nebula "github.com/vesoft-inc/nebula-ng-tools/golang"
+	"github.com/vesoft-inc/nebula-studio/server/api/studio/pkg/base"
+	"github.com/zeromicro/go-zero/core/logx"
 )
 
 type SessionPool struct {
@@ -14,7 +16,14 @@ type SessionPool struct {
 }
 
 func (client *Client) createClientSession() (session *nebula.Session, err error) {
-	session, err = client.graphClient.GetSession(client.account.username, client.account.password)
+	connection := nebula.NewConnection(client.account.host)
+	err = connection.Open(client.account.host, base.GraphServiceTimeout, nil)
+	if err != nil {
+		logx.Errorf("[Init connection pool error]: %+v", err)
+		return nil, err
+	}
+
+	session = nebula.NewSession(client.IdentifierID, connection, log)
 	if err != nil {
 		return nil, err
 	}

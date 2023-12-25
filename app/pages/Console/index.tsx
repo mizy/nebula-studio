@@ -1,4 +1,4 @@
-import { Button, Select, Spin, Tooltip, message } from 'antd';
+import { Button, Spin, Tooltip, message } from 'antd';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { observer } from 'mobx-react-lite';
 import { trackEvent, trackPageView } from '@app/utils/stat';
@@ -16,14 +16,8 @@ import HistoryBtn from './HistoryBtn';
 import FavoriteBtn from './FavoriteBtn';
 import CypherParameterBox from './CypherParameterBox';
 import ExportModal from './ExportModal';
-import SchemaDrawer from './Drawer/SchemaDrawer';
 // import NgqlDrawer from './Drawer/NgqlDrawer';
 import styles from './index.module.less';
-
-const Option = Select.Option;
-
-// split from semicolon out of quotation marks
-const SEMICOLON_REG = /((?:[^;'"]*(?:"(?:\\.|[^"])*"|'(?:\\.|[^'])*')[^;'"]*)+)|;/;
 
 const getHistory = () => {
   const value: string | null = localStorage.getItem('history');
@@ -41,13 +35,11 @@ const Console = (props: IProps) => {
   const { schema, console: consoleStore } = useStore();
   const { intl } = useI18n();
   const { onExplorer, templateRender } = props;
-  const { spaces, getSpaces } = schema;
   const {
     runGQL,
     currentGQL,
     results,
     runGQLLoading,
-    getParams,
     update,
     paramsMap,
     getFavoriteList,
@@ -67,22 +59,14 @@ const Console = (props: IProps) => {
   const historyProviderRef = useRef(null);
   useEffect(() => {
     trackPageView('/console');
-    getSpaces();
-    getParams();
+    // getSpaces();
+    // getParams();
     getFavoriteList();
     currentSpace && handleSwitchSpace(currentSpace);
     return () => {
       historyProviderRef.current?.dispose();
     };
   }, []);
-
-  const checkSwitchSpaceGql = (query: string) => {
-    const queryList = query.split(SEMICOLON_REG).filter(Boolean);
-    const reg = /^USE `?.+`?(?=[\s*;?]?)/gim;
-    if (queryList.some((sentence) => sentence.trim().match(reg))) {
-      return intl.get('common.disablesUseToSwitchSpace');
-    }
-  };
 
   const updateGql = (value: string, space?: string) => {
     update({ currentGQL: value, currentSpace: space || currentSpace });
@@ -110,10 +94,6 @@ const Console = (props: IProps) => {
       message.error(intl.get('common.sorryNGQLCannotBeEmpty'));
       return;
     }
-    const errInfo = checkSwitchSpaceGql(query);
-    if (errInfo) {
-      return message.error(errInfo);
-    }
 
     handleSaveQuery(query);
     await runGQL({ gql: query, editorValue });
@@ -135,9 +115,6 @@ const Console = (props: IProps) => {
     await onExplorer!(data);
     !modalVisible && setModalVisible(false);
     trackEvent('navigation', 'view_explore', 'from_console_btn');
-  };
-  const handleGetSpaces = (open: boolean) => {
-    open && getSpaces();
   };
   const setHistoryProvider = () => {
     historyProviderRef.current?.dispose();
@@ -242,13 +219,13 @@ const Console = (props: IProps) => {
 
   return (
     <div className={styles.nebulaConsole}>
-      <SchemaDrawer />
+      {/* <SchemaDrawer /> */}
       <div className={styles.consoleContainer} ref={resultContainerRef}>
         <div className={styles.consolePanel}>
           <div className={styles.panelHeader}>
             <span className={styles.title}>{`${window.gConfig.databaseName} ${intl.get('common.console')}`}</span>
             <div className={styles.operations}>
-              <div className={styles.spaceSelect}>
+              {/* <div className={styles.spaceSelect}>
                 <Select
                   allowClear
                   value={currentSpace || null}
@@ -262,7 +239,7 @@ const Console = (props: IProps) => {
                     </Option>
                   ))}
                 </Select>
-              </div>
+              </div> */}
               <div className={styles.btnOperations}>
                 {templateRender?.(currentGQL)}
                 <FavoriteBtn onGqlSelect={updateGql} />

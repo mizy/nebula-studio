@@ -2,10 +2,11 @@ package client
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
-	uuid "github.com/satori/go.uuid"
-	nebula "github.com/vesoft-inc/nebula-go/v3"
+	nebula "github.com/vesoft-inc/nebula-ng-tools/golang"
+	"github.com/vesoft-inc/nebula-studio/server/api/studio/pkg/base"
 	"github.com/vesoft-inc/nebula-studio/server/api/studio/pkg/utils"
 	"github.com/zeromicro/go-zero/core/logx"
 )
@@ -49,7 +50,7 @@ type ChannelRequest struct {
 }
 
 type Client struct {
-	graphClient    *nebula.ConnectionPool
+	IdentifierID   int64
 	RequestChannel chan ChannelRequest
 	CloseChannel   chan bool
 	updateTime     int64
@@ -66,7 +67,7 @@ var clientPool = utils.NewMutexMap[*Client]()
 
 var log = newNebulaLogger()
 
-func NewClient(address string, port int, username string, password string, conf nebula.PoolConfig) (*ClientInfo, error) {
+func NewClient(address string, port int, username string, password string, conf any) (*ClientInfo, error) {
 	var err error
 
 	// TODO: it's better to add a schedule to make it instead
@@ -74,25 +75,30 @@ func NewClient(address string, port int, username string, password string, conf 
 	if currentClientNum > clientRecycleNum {
 		go recycleClients()
 		if currentClientNum >= clientMaxNum {
-			return nil, errors.New("There is no idle connection now, please try it later")
+			return nil, errors.New("there is no idle connection now, please try it later")
 		}
 	}
 	hostAddress := nebula.HostAddress{Host: address, Port: port}
-	hostList := []nebula.HostAddress{hostAddress}
-	pool, err := nebula.NewConnectionPool(hostList, conf, log)
+	connection := nebula.NewConnection(hostAddress)
+	err = connection.Open(hostAddress, base.GraphServiceTimeout, nil)
 	if err != nil {
 		logx.Errorf("[Init connection pool error]: %+v", err)
 		return nil, err
 	}
-
-	u, err := uuid.NewV4()
+	authResp, err := connection.Authenticate(username, password)
 	if err != nil {
+		logx.Errorf("[Authenticate error]: %+v", err)
 		return nil, err
 	}
+	if string(authResp.GetGqlStatus().Status) != "SUCCESS" {
+		logx.Errorf("[Authenticate error]: %+v", authResp.GetGqlStatus().Status)
+		return nil, errors.New(string(authResp.GetGqlStatus().Status))
+	}
 
-	nsid := u.String()
+	id := authResp.GetIdentifier()
+	nsid := fmt.Sprintf("%d", id)
 	client := &Client{
-		graphClient:    pool,
+		IdentifierID:   id,
 		RequestChannel: make(chan ChannelRequest),
 		CloseChannel:   make(chan bool),
 		updateTime:     time.Now().Unix(),
@@ -107,8 +113,7 @@ func NewClient(address string, port int, username string, password string, conf 
 			ildeSessions:   make([]*nebula.Session, 0),
 		},
 	}
-
-	session, err := client.getSession()
+	session := nebula.NewSession(client.IdentifierID, connection, log)
 	if err != nil {
 		CloseClient(nsid)
 		return nil, err
@@ -145,7 +150,6 @@ func CloseClient(nsid string) {
 func ClearClients() {
 	clientPool.ForEach(func(key string, client *Client) {
 		client.sessionPool.clearSessions()
-		client.graphClient.Close()
 	})
 	clientPool.Clear()
 }
@@ -158,4 +162,14 @@ func recycleClients() {
 			client.CloseChannel <- true
 		}
 	})
+}
+
+func FindNSIDByAuthData(address string, port int, username string, password string) string {
+	nsid := ""
+	clientPool.ForEach(func(key string, client *Client) {
+		if client.account.username == username && client.account.password == password && client.account.host.Host == address && client.account.host.Port == port {
+			nsid = key
+		}
+	})
+	return nsid
 }

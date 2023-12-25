@@ -15,6 +15,7 @@ import (
 	"github.com/vesoft-inc/nebula-studio/server/api/studio/internal/config"
 	"github.com/vesoft-inc/nebula-studio/server/api/studio/internal/svc"
 	"github.com/vesoft-inc/nebula-studio/server/api/studio/internal/types"
+	"github.com/vesoft-inc/nebula-studio/server/api/studio/pkg/base"
 	"github.com/vesoft-inc/nebula-studio/server/api/studio/pkg/client"
 	"github.com/vesoft-inc/nebula-studio/server/api/studio/pkg/ecode"
 	"github.com/vesoft-inc/nebula-studio/server/api/studio/pkg/utils"
@@ -39,11 +40,6 @@ type (
 )
 
 var CtxUserInfoMap map[string]AuthData = make(map[string]AuthData)
-
-// set the timeout for the graph service: 8 hours
-// once the timeout is reached, the connection will be closed
-// all requests running ngql will be failed, so keepping a long timeout is necessary, make the connection alive
-const GraphServiceTimeout = 8 * time.Hour
 
 func IsSessionError(err error) bool {
 	subErrMsgStr := []string{
@@ -129,9 +125,10 @@ func ParseConnectDBParams(params *types.ConnectDBParams, config *config.Config) 
 	}
 
 	username, password := loginInfo[0], loginInfo[1]
+
 	// set Graph Service connect timeout 8h, which is 0s default(means no timeout)
 	poolCfg := nebula.GetDefaultConf()
-	poolCfg.TimeOut = GraphServiceTimeout
+	poolCfg.TimeOut = base.GraphServiceTimeout
 	poolCfg.MaxConnPoolSize = 200
 	clientInfo, err := client.NewClient(params.Address, params.Port, username, password, poolCfg)
 	if err != nil {
